@@ -1,6 +1,138 @@
-<script type="text/javascript" src="./api.js"></script>
-<script type="text/javascript">
-    window.addEventListener('load', function () {
-        document.body.insertAdjacentHTML('beforeend', `${api()}`);
-    });
-</script>
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="">
+  <title>TWPay QRCode Generator</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css"
+    integrity="sha512-b2QcS5SsA8tZodcDtGRELiGv5SaKSk1vDHDaQRda0htPYWZ6046lr3kJ5bAAQdpV2mmA/4v0wQF9MyU6/pDIAg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body class="text-center">
+
+  <main class="form-generator">
+    <form id="generator">
+      <!-- <img class="mb-4" src="../assets/brand/bootstrap-logo.svg" alt="" width="72" height="57"> -->
+      <h1 class="h3 mb-3 fw-normal">TWPay QRCode Generator</h1>
+
+      <div class="form-floating">
+        <input type="text" class="form-control" id="input_bank" placeholder="3 位數字">
+        <label for="input_bank">銀行代碼</label>
+      </div>
+
+      <div class="form-floating">
+        <input type="text" class="form-control" id="input_acc" placeholder="1-16 位數字">
+        <label for="input_acc">帳號/銷帳編號</label>
+      </div>
+
+      <div class="form-floating">
+        <input type="text" class="form-control" id="input_amount" placeholder="1-7 位數字">
+        <label for="input_amount">金額(若為空，掃碼可設定金額)</label>
+      </div>
+
+      <div class="form-floating">
+        <input type="text" class="form-control" id="input_memo" placeholder="1-19 位字串">
+        <label for="input_memo">備註(超過19字元之部分將忽略)</label>
+      </div>
+
+      <div class="checkbox mb-3">
+        <input class="form-check-input" type="checkbox" value="300" id="input_redir" checked>
+        <label class="form-check-label" for="input_redir">產生QR圖片</label>
+      </div>
+      <button class="w-100 btn btn-lg btn-primary" type="button" onclick="go();">Generator</button>
+
+      <p class="mt-5 mb-3 text-muted">BlueCat &copy; 2023</p>
+    </form>
+  </main>
+
+
+  <div class="row" id="collapseExample" style="display: none;">
+    <div class="card card-body">
+      ...
+    </div>
+    <button type="button" class="btn btn-secondary" onclick="hideCollapse();">Back</button>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal fade" id="AlertModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="exampleModalLabel">Message</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          ...
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"
+    integrity="sha512-X/YkDZyjTf4wyc2Vy16YGCPHwAY8rZJY+POgokZjQB2mhIRFJCckEGc6YyX9eNsPfn0PzThEuNs+uaomE5CO6A=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="./script.js"></script>
+  <script>
+    function go() {
+      let input_bank = document.querySelector("#input_bank").value;
+      let input_acc = document.querySelector("#input_acc").value;
+      let input_amount = document.querySelector("#input_amount").value;
+      let input_memo = document.querySelector("#input_memo").value;
+      let input_redir = document.querySelector("#input_redir").checked;
+      let input_qrcodepixel = document.querySelector("#input_redir").value;
+
+      if (input_bank === "") return alert("請輸入銀行代碼");
+      if (input_acc === "") return alert("請輸入帳號/銷帳編號");
+
+      let datas = {
+        bankcode: input_bank,
+        accno: input_acc,
+        amount: input_amount,
+        memo: input_memo
+      };
+
+      let result = generate("TWPay", datas, input_redir, input_qrcodepixel);
+
+      displayCollapse(result);
+
+    }
+
+    function hideCollapse() {
+      const myCollapseEl = document.querySelector("#collapseExample");
+      myCollapseEl.style.display = "none";
+
+      const myformEl = document.querySelector(".form-generator");
+      myformEl.style.display = "block";
+    }
+
+    function displayCollapse(message) {
+
+      const targetSectionEl = document.querySelector("#collapseExample .card-body");
+
+      if (message["QString"] != undefined) {
+        let QRcodeImg = `<img src="${message["QString"]}" class="rounded mx-auto d-block" alt="QRCode">`
+        targetSectionEl.innerHTML = QRcodeImg;
+      }
+      else { targetSectionEl.innerHTML = JSON.stringify(message); }
+
+      const myCollapseEl = document.querySelector("#collapseExample");
+      myCollapseEl.style.display = "block";
+      document.querySelector(".form-generator").style.display = 'none';
+    }
+
+    function alert(message) {
+      document.querySelector("#AlertModal .modal-body").innerHTML = message;
+      const myModalAlternative = new bootstrap.Modal('#AlertModal');
+      myModalAlternative.show();
+    };
+  </script>
+</body>
+
+</html>
