@@ -7,7 +7,7 @@
  * @param {boolean} QRCode 是否產生QRCode
  * @param {number} QRCodePixel QRCode像素大小
  */
-function generate(Mode, Data, QRCode, QRCodePixel = 400) {
+function generate(Mode, Data, QRCode, QRCodePixel = "150x150") {
 
     // 回應模型
     var reponse_model = {
@@ -31,7 +31,7 @@ function generate(Mode, Data, QRCode, QRCodePixel = 400) {
     // 產生QRCode
     if (QRCode) {
         let QString = reponse_model["String"];
-        QRCodeUrl = `https://chart.googleapis.com/chart?cht=qr&chs=${QRCodePixel}x${QRCodePixel}&chl=${QString}`
+        QRCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${QRCodePixel}&data=${QString}`
         reponse_model["QString"] = QRCodeUrl;
     }
 
