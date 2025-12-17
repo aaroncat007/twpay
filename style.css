@@ -13,9 +13,17 @@ body {
 
 .form-generator {
   width: 100%;
-  max-width: 330px;
+  max-width: 400px;
   padding: 15px;
   margin: auto;
+}
+
+.form-generator .mode-switch {
+  text-align: center;
+}
+
+.form-generator .mode-switch .btn-group {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .form-generator .checkbox {
@@ -29,4 +37,11 @@ body {
 #collapseExample {
   margin: 0 auto;
   max-width: 90vw;
+}
+
+/* 格式提示區塊樣式 */
+.format-hint {
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  font-size: 0.875rem;
 }
