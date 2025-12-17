@@ -20,47 +20,8 @@ createApp({
             showResult: false,
             resultQRCode: null,
 
-            // 銀行列表
-            bankList: [
-                { code: '004', name: '台灣銀行' },
-                { code: '005', name: '土地銀行' },
-                { code: '006', name: '合作金庫' },
-                { code: '007', name: '第一銀行' },
-                { code: '008', name: '華南銀行' },
-                { code: '009', name: '彰化銀行' },
-                { code: '011', name: '上海銀行' },
-                { code: '012', name: '台北富邦' },
-                { code: '013', name: '國泰世華' },
-                { code: '016', name: '高雄銀行' },
-                { code: '017', name: '兆豐商銀' },
-                { code: '048', name: '王道銀行' },
-                { code: '050', name: '台灣企銀' },
-                { code: '052', name: '渣打銀行' },
-                { code: '053', name: '台中商銀' },
-                { code: '054', name: '京城銀行' },
-                { code: '081', name: '匯豐銀行' },
-                { code: '083', name: '新加坡華僑' },
-                { code: '102', name: '華泰銀行' },
-                { code: '103', name: '新光銀行' },
-                { code: '108', name: '陽信銀行' },
-                { code: '118', name: '板信銀行' },
-                { code: '147', name: '三信商銀' },
-                { code: '700', name: '郵局' },
-                { code: '803', name: '聯邦銀行' },
-                { code: '805', name: '遠東商銀' },
-                { code: '806', name: '元大銀行' },
-                { code: '807', name: '永豐銀行' },
-                { code: '808', name: '玉山銀行' },
-                { code: '809', name: '凱基銀行' },
-                { code: '810', name: '星展銀行' },
-                { code: '812', name: '台新銀行' },
-                { code: '815', name: '日盛銀行' },
-                { code: '816', name: '安泰銀行' },
-                { code: '822', name: '中國信託' },
-                { code: '826', name: '台灣樂天' },
-                { code: '910', name: '財金資訊' },
-                { code: '997', name: '聯合信用卡處理中心' }
-            ],
+            // 銀行列表（從 bank.json 載入）
+            bankList: [],
 
             // 繳費類別（分組，包含提示訊息）
             paymentCategories: [
@@ -162,7 +123,9 @@ createApp({
         };
     },
 
-    mounted() {
+    async mounted() {
+        // 載入銀行資料
+        await this.loadBankList();
         // 頁面載入時恢復授權狀態
         this.restoreGoogleDriveAuth();
     },
@@ -195,10 +158,32 @@ createApp({
                 }
             }
             return '';
+        },
+
+        // 選中的銀行完整名稱
+        selectedBankName() {
+            if (!this.formData.bankCode || !this.bankList.length) return '';
+            const bank = this.bankList.find(b => b.code === this.formData.bankCode);
+            return bank ? bank.name : '';
         }
     },
 
     methods: {
+        // 載入銀行列表
+        async loadBankList() {
+            try {
+                const response = await fetch('./bank.json');
+                this.bankList = await response.json();
+            } catch (error) {
+                console.error('載入銀行列表失敗:', error);
+                // 如果載入失敗，使用預設列表
+                this.bankList = [
+                    { code: '004', name: '004臺灣銀行' },
+                    { code: '700', name: '700中華郵政股份有限公司' }
+                ];
+            }
+        },
+
         // 模式切換
         switchMode(mode) {
             this.currentMode = mode;

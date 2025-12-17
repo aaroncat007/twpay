@@ -46,9 +46,9 @@
           <label>繳費類別</label>
         </div>
 
-        <!-- 銀行代碼選單 (繳費模式下隱藏) -->
+        <!-- 銀行代碼 (僅在一般模式顯示) -->
         <div class="form-floating" v-show="!isPaymentMode">
-          <input type="text" class="form-control" list="bank_list" v-model="formData.bankCode" placeholder="3 位數字">
+          <input type="text" class="form-control" v-model="formData.bankCode" list="bank_list" placeholder="3 位數字">
           <datalist id="bank_list">
             <option v-for="bank in bankList" :key="bank.code" :value="bank.code">{{ bank.name }}</option>
           </datalist>
@@ -59,6 +59,7 @@
         <div class="alert alert-info format-hint" v-show="currentHint">
           <small>{{ currentHint }}</small>
         </div>
+
 
         <!-- 帳號/銷帳編號 -->
         <div class="form-floating">
@@ -71,6 +72,7 @@
           <input type="number" class="form-control" v-model="formData.amount" placeholder="請輸入金額">
           <label>{{ isPaymentMode ? '繳費金額(若為空，掃碼可設定金額)' : '轉帳金額(若為空，掃碼可設定金額)' }}</label>
         </div>
+
 
         <!-- 備註資料 (僅一般模式顯示) -->
         <div class="form-floating" v-show="!isPaymentMode">
