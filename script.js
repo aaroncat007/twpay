@@ -147,8 +147,24 @@ createApp({
             ],
 
             // Modal 相關
-            alertMessage: ''
+            alertMessage: '',
+
+            // Google Drive 相關
+            isGoogleDriveConnected: false,
+            googleAccessToken: null,
+            savedDataList: [],
+            showSaveDialog: false,
+            showLoadDialog: false,
+            saveItemName: '',
+            loadingData: false,
+            GOOGLE_CLIENT_ID: '675169914053-qc10o05lo77l1rk1ukm4pd17gl4uvnur.apps.googleusercontent.com',
+            SCOPES: 'https://www.googleapis.com/auth/drive.appdata'
         };
+    },
+
+    mounted() {
+        // 頁面載入時恢復授權狀態
+        this.restoreGoogleDriveAuth();
     },
 
     computed: {
@@ -374,6 +390,264 @@ createApp({
             this.alertMessage = message;
             const myModalAlternative = new bootstrap.Modal('#AlertModal');
             myModalAlternative.show();
+        },
+
+        // ========== Google Drive 功能 ==========
+
+        // 恢復 Google Drive 授權
+        restoreGoogleDriveAuth() {
+            const savedToken = localStorage.getItem('google_drive_token');
+            if (savedToken) {
+                this.googleAccessToken = savedToken;
+                this.isGoogleDriveConnected = true;
+            }
+        },
+
+        // 切換 Google Drive 連接
+        async toggleGoogleDrive() {
+            if (this.isGoogleDriveConnected) {
+                // 登出
+                this.googleAccessToken = null;
+                this.isGoogleDriveConnected = false;
+                localStorage.removeItem('google_drive_token');
+                this.showAlert('已中斷與 Google Drive 的連接');
+            } else {
+                // 登入
+                await this.initGoogleDrive();
+            }
+        },
+
+        // 初始化 Google Drive
+        async initGoogleDrive() {
+            try {
+                const tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: this.GOOGLE_CLIENT_ID,
+                    scope: this.SCOPES,
+                    callback: (response) => {
+                        if (response.access_token) {
+                            this.googleAccessToken = response.access_token;
+                            this.isGoogleDriveConnected = true;
+                            // 儲存 token 到 localStorage
+                            localStorage.setItem('google_drive_token', response.access_token);
+                            this.showAlert('✓ 已連接 Google Drive\n授權已記住，下次無需重新登入');
+                        }
+                    },
+                });
+                tokenClient.requestAccessToken();
+            } catch (error) {
+                console.error('Google Drive 初始化錯誤:', error);
+                this.showAlert('連接失敗：' + error.message);
+            }
+        },
+
+        // 儲存到 Google Drive
+        async saveToGoogleDrive() {
+            if (!this.saveItemName.trim()) {
+                this.showAlert('請輸入名稱');
+                return;
+            }
+
+            try {
+                // 讀取現有資料
+                let fileId = null;
+                let existingData = { version: '1.0', savedItems: [] };
+                const searchResponse = await fetch(
+                    `https://www.googleapis.com/drive/v3/files?q=name='twpay_data.json'&spaces=appDataFolder`,
+                    { headers: { Authorization: `Bearer ${this.googleAccessToken}` } }
+                );
+                const searchResult = await searchResponse.json();
+
+                if (searchResult.files && searchResult.files.length > 0) {
+                    fileId = searchResult.files[0].id;
+
+                    const getResponse = await fetch(
+                        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                        { headers: { Authorization: `Bearer ${this.googleAccessToken}` } }
+                    );
+                    existingData = await getResponse.json();
+                } else {
+                }
+
+                // 新增資料
+                const newItem = {
+                    id: Date.now().toString(),
+                    name: this.saveItemName,
+                    mode: this.currentMode,
+                    data: {
+                        bankCode: this.formData.bankCode,
+                        paymentCategory: this.formData.paymentCategory,
+                        accountNumber: this.formData.accountNumber,
+                        amount: this.formData.amount,
+                        memo: this.formData.memo
+                    },
+                    timestamp: new Date().toISOString()
+                };
+                existingData.savedItems.push(newItem);
+
+                // 儲存到 Drive
+                const metadata = {
+                    name: 'twpay_data.json',
+                    mimeType: 'application/json'
+                };
+
+                // 只有新建檔案時才加入 parents
+                if (!fileId) {
+                    metadata.parents = ['appDataFolder'];
+                }
+
+                const file = new Blob([JSON.stringify(existingData, null, 2)], { type: 'application/json' });
+                const form = new FormData();
+                form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+                form.append('file', file);
+
+                const url = fileId
+                    ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
+                    : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+
+                const method = fileId ? 'PATCH' : 'POST';
+                const uploadResponse = await fetch(url, {
+                    method: method,
+                    headers: { Authorization: `Bearer ${this.googleAccessToken}` },
+                    body: form
+                });
+
+                const uploadResult = await uploadResponse.json();
+
+                if (uploadResponse.ok) {
+                    this.showSaveDialog = false;
+                    this.saveItemName = '';
+
+                    // 更新快取
+                    this.savedDataList = existingData.savedItems;
+
+                    this.showAlert(`✓ 已儲存到 Google Drive\n項目數：${existingData.savedItems.length}`);
+                } else {
+                    throw new Error(`上傳失敗: ${uploadResult.error?.message || '未知錯誤'}`);
+                }
+            } catch (error) {
+                console.error('❌ 儲存錯誤:', error);
+                this.showAlert('儲存失敗：' + error.message + '\n請檢查控制台以獲取更多資訊');
+            }
+        },
+
+        // 打開載入對話框
+        async openLoadDialog() {
+            this.showLoadDialog = true;
+
+            // 如果有快取，先顯示快取資料
+            if (this.savedDataList.length > 0) {
+                this.loadingData = false;
+            } else {
+                // 沒有快取才顯示 loading
+                this.loadingData = true;
+                await this.loadFromGoogleDrive();
+            }
+        },
+
+        // 重新整理資料（手動更新）
+        async refreshData() {
+            this.loadingData = true;
+            await this.loadFromGoogleDrive();
+        },
+
+        // 從 Google Drive 載入
+        async loadFromGoogleDrive() {
+
+            try {
+                const searchResponse = await fetch(
+                    `https://www.googleapis.com/drive/v3/files?q=name='twpay_data.json'&spaces=appDataFolder`,
+                    { headers: { Authorization: `Bearer ${this.googleAccessToken}` } }
+                );
+                const searchResult = await searchResponse.json();
+
+                if (searchResult.files && searchResult.files.length > 0) {
+                    const fileId = searchResult.files[0].id;
+
+                    const getResponse = await fetch(
+                        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                        { headers: { Authorization: `Bearer ${this.googleAccessToken}` } }
+                    );
+                    const data = await getResponse.json();
+
+                    this.savedDataList = data.savedItems || [];
+                } else {
+                    this.savedDataList = [];
+                }
+            } catch (error) {
+                console.error('❌ 載入錯誤:', error);
+                this.showAlert('載入失敗：' + error.message + '\n請檢查控制台以獲取更多資訊');
+                this.savedDataList = [];
+            } finally {
+                this.loadingData = false;
+            }
+        },
+
+        // 載入選中的項目
+        loadSavedItem(item) {
+            this.currentMode = item.mode;
+            this.formData.bankCode = item.data.bankCode || '';
+            this.formData.paymentCategory = item.data.paymentCategory || '';
+            this.formData.accountNumber = item.data.accountNumber || '';
+            this.formData.amount = item.data.amount || '';
+            this.formData.memo = item.data.memo || '';
+            this.showLoadDialog = false;
+        },
+
+        // 刪除項目
+        async deleteSavedItem(itemId) {
+            if (!confirm('確定要刪除此項目嗎？')) return;
+
+            try {
+                const searchResponse = await fetch(
+                    `https://www.googleapis.com/drive/v3/files?q=name='twpay_data.json'&spaces=appDataFolder`,
+                    { headers: { Authorization: `Bearer ${this.googleAccessToken}` } }
+                );
+                const searchResult = await searchResponse.json();
+
+                if (searchResult.files && searchResult.files.length > 0) {
+                    const fileId = searchResult.files[0].id;
+                    const getResponse = await fetch(
+                        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                        { headers: { Authorization: `Bearer ${this.googleAccessToken}` } }
+                    );
+                    const data = await getResponse.json();
+
+                    data.savedItems = data.savedItems.filter(item => item.id !== itemId);
+
+                    const metadata = {
+                        name: 'twpay_data.json',
+                        mimeType: 'application/json'
+                    };
+                    const file = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const form = new FormData();
+                    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+                    form.append('file', file);
+
+                    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
+                        method: 'PATCH',
+                        headers: { Authorization: `Bearer ${this.googleAccessToken}` },
+                        body: form
+                    });
+
+                    await this.loadFromGoogleDrive();
+                    this.showAlert('✓ 已刪除');
+                }
+            } catch (error) {
+                console.error('刪除錯誤:', error);
+                this.showAlert('刪除失敗：' + error.message);
+            }
+        },
+
+        // 格式化日期
+        formatDate(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleString('zh-TW', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
         }
     }
 }).mount('#app');

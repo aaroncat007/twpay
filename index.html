@@ -10,6 +10,9 @@
     integrity="sha512-b2QcS5SsA8tZodcDtGRELiGv5SaKSk1vDHDaQRda0htPYWZ6046lr3kJ5bAAQdpV2mmA/4v0wQF9MyU6/pDIAg=="
     crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="./style.css" />
+  <!-- Google API -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://apis.google.com/js/api.js"></script>
 </head>
 
 <body>
@@ -87,6 +90,39 @@
 
         <button class="w-100 btn btn-lg btn-primary" type="submit">Generator</button>
 
+        <!-- Google Drive 功能區 -->
+        <div class="mt-3">
+          <!-- 未連接：顯示連接按鈕 -->
+          <div v-if="!isGoogleDriveConnected" class="text-center">
+            <button type="button" class="btn btn-outline-primary w-100" @click="toggleGoogleDrive">
+              🔗 連接 Google Drive 儲存資料
+            </button>
+            <small class="text-muted d-block mt-2">連接後可儲存常用資料到雲端</small>
+          </div>
+
+          <!-- 已連接：顯示儲存/載入按鈕 -->
+          <div v-else>
+            <div class="row g-2">
+              <div class="col-6">
+                <button type="button" class="w-100 btn btn-success" @click="showSaveDialog = true">
+                  💾 儲存到雲端
+                </button>
+              </div>
+              <div class="col-6">
+                <button type="button" class="w-100 btn btn-info" @click="openLoadDialog">
+                  📂 載入資料
+                </button>
+              </div>
+            </div>
+            <div class="text-center mt-2">
+              <small class="text-muted">已連接 Google Drive</small>
+              <button type="button" class="btn btn-link btn-sm text-muted p-0 ms-2" @click="toggleGoogleDrive">
+                (登出)
+              </button>
+            </div>
+          </div>
+        </div>
+
         <p class="mt-5 mb-3 text-muted">BlueCat &copy; 2025</p>
       </form>
     </main>
@@ -116,6 +152,69 @@
         </div>
       </div>
     </div>
+
+    <!-- Save Modal -->
+    <div class="modal fade" :class="{ show: showSaveDialog }" :style="{ display: showSaveDialog ? 'block' : 'none' }"
+      tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">儲存到 Google Drive</h5>
+            <button type="button" class="btn-close" @click="showSaveDialog = false"></button>
+          </div>
+          <div class="modal-body">
+            <input type="text" class="form-control" v-model="saveItemName" placeholder="請輸入名稱（例如：台水繳費）">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @click="showSaveDialog = false">取消</button>
+            <button type="button" class="btn btn-primary" @click="saveToGoogleDrive">儲存</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-backdrop fade" :class="{ show: showSaveDialog }" v-if="showSaveDialog"></div>
+
+    <!-- Load Modal -->
+    <div class="modal fade" :class="{ show: showLoadDialog }" :style="{ display: showLoadDialog ? 'block' : 'none' }"
+      tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">從 Google Drive 載入</h5>
+            <div>
+              <button type="button" class="btn btn-sm btn-outline-primary me-2" @click="refreshData" title="重新整理">
+                🔄 重新整理
+              </button>
+              <button type="button" class="btn-close" @click="showLoadDialog = false"></button>
+            </div>
+          </div>
+          <div class="modal-body">
+            <div v-if="loadingData" class="text-center p-3">
+              <div class="spinner-border" role="status"></div>
+              <p>載入中...</p>
+            </div>
+            <div v-else-if="savedDataList.length === 0" class="text-center p-3 text-muted">
+              尚無儲存的資料
+            </div>
+            <div v-else class="list-group">
+              <div v-for="item in savedDataList" :key="item.id"
+                class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="mb-1">{{ item.name }}</h6>
+                  <small class="text-muted">{{ item.mode === 1 ? '一般模式' : '繳費模式' }} | {{ formatDate(item.timestamp)
+                    }}</small>
+                </div>
+                <div>
+                  <button class="btn btn-sm btn-primary me-2" @click="loadSavedItem(item)">載入</button>
+                  <button class="btn btn-sm btn-danger" @click="deleteSavedItem(item.id)">刪除</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-backdrop fade" :class="{ show: showLoadDialog }" v-if="showLoadDialog"></div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"
