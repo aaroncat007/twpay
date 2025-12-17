@@ -23,6 +23,10 @@ createApp({
             // 銀行列表（從 bank.json 載入）
             bankList: [],
 
+            // 銀行選擇器相關
+            bankSearchQuery: '',
+            showBankDropdown: false,
+
             // 繳費類別（分組，包含提示訊息）
             paymentCategories: [
                 {
@@ -165,6 +169,18 @@ createApp({
             if (!this.formData.bankCode || !this.bankList.length) return '';
             const bank = this.bankList.find(b => b.code === this.formData.bankCode);
             return bank ? bank.name : '';
+        },
+
+        // 過濾銀行列表
+        filteredBanks() {
+            if (!this.bankSearchQuery) {
+                return this.bankList.slice(0, 50); // 顯示前 50 個
+            }
+            const query = this.bankSearchQuery.toLowerCase();
+            return this.bankList.filter(bank => {
+                return bank.code.includes(query) ||
+                    bank.name.toLowerCase().includes(query);
+            }).slice(0, 50);
         }
     },
 
@@ -182,6 +198,54 @@ createApp({
                     { code: '700', name: '700中華郵政股份有限公司' }
                 ];
             }
+        },
+
+        // 處理銀行搜尋
+        handleBankSearch() {
+            this.showBankDropdown = true;
+            // 如果輸入的是純數字且長度為3，自動設置為銀行代碼
+            if (/^\d{3}$/.test(this.bankSearchQuery)) {
+                const bank = this.bankList.find(b => b.code === this.bankSearchQuery);
+                if (bank) {
+                    this.formData.bankCode = bank.code;
+                }
+            } else {
+                // 清除之前的選擇
+                this.formData.bankCode = '';
+            }
+        },
+
+        // 選擇銀行
+        selectBank(bank) {
+            this.formData.bankCode = bank.code;
+            this.bankSearchQuery = `${bank.code} - ${bank.name}`;
+            this.showBankDropdown = false;
+        },
+
+        // 清除銀行選擇
+        clearBankSelection() {
+            this.formData.bankCode = '';
+            this.bankSearchQuery = '';
+            this.showBankDropdown = false;
+        },
+
+        // 高亮匹配文字
+        highlightMatch(text, query) {
+            if (!query) return text;
+            const regex = new RegExp(`(${query})`, 'gi');
+            return text.replace(regex, '<span class="match-highlight">$1</span>');
+        },
+
+        // 處理失焦
+        handleBankBlur() {
+            // 延遲關閉，讓點擊事件能夠觸發
+            setTimeout(() => {
+                this.showBankDropdown = false;
+                // 如果沒有選擇銀行，清空搜尋框
+                if (!this.formData.bankCode) {
+                    this.bankSearchQuery = '';
+                }
+            }, 200);
         },
 
         // 模式切換
