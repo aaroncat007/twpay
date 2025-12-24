@@ -25,6 +25,30 @@ body {
   margin: auto;
 }
 
+/* 在小螢幕上減少 padding，讓 QR Code 更大 */
+@media (max-width: 576px) {
+  #app {
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
+
+  .form-generator {
+    padding: 10px;
+    max-width: 100%;
+  }
+
+  /* QR Code 結果頁面更緊湊 */
+  .form-generator.text-center {
+    padding: 5px;
+  }
+
+  /* QR Code 圖片佔滿可用寬度 */
+  .form-generator img {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
 .form-generator .mode-switch {
   text-align: center;
 }

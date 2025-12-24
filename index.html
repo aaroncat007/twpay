@@ -91,16 +91,6 @@
           <input type="text" id="memo" class="form-input" v-model="formData.memo" placeholder="最多 19 字元" maxlength="19">
         </div>
 
-        <!-- QR Code 大小 -->
-        <div class="form-check text-start my-3">
-          <label class="form-check-label">
-            QR Code 大小：
-            <input type="number" class="form-input" v-model.number="formData.qrSize" min="150" max="500" step="50"
-              style="width: 80px; margin-left: 10px;">
-            px
-          </label>
-        </div>
-
         <button class="w-100 btn btn-lg btn-primary" type="submit">Generator</button>
 
         <!-- Google Drive 功能區 -->
@@ -143,9 +133,12 @@
     <!-- 結果顯示 -->
     <div class="row" v-show="showResult">
       <div class="card card-body">
-        <img v-if="resultQRCode" :src="resultQRCode" class="rounded mx-auto d-block" alt="QRCode">
+        <img v-if="qrCodeDataUrl" :src="qrCodeDataUrl" class="rounded mx-auto d-block" alt="QRCode">
       </div>
       <button type="button" class="btn btn-secondary" @click="goBack">Back</button>
+      <button type="button" class="btn btn-success mt-2" @click="downloadQRCode" v-if="qrCodeDataUrl">
+        💾 下載 QR Code
+      </button>
     </div>
 
     <!-- Alert Modal -->
@@ -179,8 +172,12 @@
             <input type="text" class="form-control" v-model="saveItemName" placeholder="請輸入名稱（例如：台水繳費）">
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" @click="showSaveDialog = false">取消</button>
-            <button type="button" class="btn btn-primary" @click="saveToGoogleDrive">儲存</button>
+            <button type="button" class="btn btn-secondary" @click="showSaveDialog = false"
+              :disabled="isSaving">取消</button>
+            <button type="button" class="btn btn-primary" @click="saveToGoogleDrive" :disabled="isSaving">
+              <span v-if="isSaving"><i class="bi bi-hourglass-split"></i> 儲存中...</span>
+              <span v-else>儲存</span>
+            </button>
           </div>
         </div>
       </div>
@@ -219,7 +216,10 @@
                 </div>
                 <div>
                   <button class="btn btn-sm btn-primary me-2" @click="loadSavedItem(item)">載入</button>
-                  <button class="btn btn-sm btn-danger" @click="deleteSavedItem(item.id)">刪除</button>
+                  <button class="btn btn-sm btn-danger" @click="deleteSavedItem(item.id)" :disabled="isDeleting">
+                    <span v-if="isDeleting">刪除中...</span>
+                    <span v-else>刪除</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -233,7 +233,18 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"
     integrity="sha512-X/YkDZyjTf4wyc2Vy16YGCPHwAY8rZJY+POgokZjQB2mhIRFJCckEGc6YyX9eNsPfn0PzThEuNs+uaomE5CO6A=="
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <!-- QR Code 生成庫 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.1/qrcode.min.js"></script>
+
+  <!-- 自訂模組 -->
+  <script src="./js/qrcode-generator.js"></script>
+  <script src="./js/google-drive.js"></script>
+
+  <!-- Vue 框架 -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+  <!-- 主程式 -->
   <script src="./script.js"></script>
 </body>
 
